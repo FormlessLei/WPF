@@ -43,3 +43,4 @@ _ReSharper.*
 # 忽略项目特定文件
 *.csproj.user
 *.vbproj.user
+/FocusWrite/FocusWrite/Properties
