@@ -5,31 +5,37 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JinReporter"
         mc:Ignorable="d"
-        Title="表格处理辅助工具" Height="350" Width="500">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        Title="多模板表格处理工具" Height="500" Width="650">
+    <ScrollViewer>
+        <StackPanel Margin="15">
+            <!-- 模板文件输入区域 -->
+            <GroupBox Header="模板文件">
+                <StackPanel>
+                    <local:FileDropTextBox x:Name="TemplateFileBox" Height="30"/>
+                    <Button Content="确认模板" Click="ConfirmTemplate_Click" 
+                            Margin="0,10,0,0" Width="80" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </GroupBox>
 
-        <!-- 表格1路径 -->
-        <Label Grid.Row="0" Content="表格1路径(国家数据):"/>
-        <local:FileDropTextBox x:Name="Table1Path" Grid.Row="1" Margin="0,0,0,10"/>
+            <!-- 动态生成的数据源输入区域 -->
+            <ItemsControl x:Name="DataSourceControls" Margin="0,20,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <GroupBox Header="{Binding TemplateName}" Margin="0,0,0,15">
+                            <StackPanel>
+                                <Label Content="国家数据表路径:"/>
+                                <local:FileDropTextBox Text="{Binding CountryTablePath, Mode=TwoWay}"/>
 
-        <!-- 表格2路径 -->
-        <Label Grid.Row="2" Content="表格2路径(商品数据):"/>
-        <local:FileDropTextBox x:Name="Table2Path" Grid.Row="3" Margin="0,0,0,10"/>
+                                <Label Content="商品数据表路径:"/>
+                                <local:FileDropTextBox Text="{Binding ProductTablePath, Mode=TwoWay}"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
-        <!-- 表格3路径 -->
-        <Label Grid.Row="4" Content="表格3路径(商品数据):"/>
-        <local:FileDropTextBox  x:Name="Table3Path" Grid.Row="5"   Margin="0,0,0,10"/>
-
-        <!-- 处理按钮 -->
-        <Button Grid.Row="6" Content="开始转换" Height="30" Click="ProcessButton_Click"/>
-    </Grid>
+            <!-- 操作按钮 -->
+            <Button Content="开始处理" Click="ProcessButton_Click" Height="35" Margin="0,20"/>
+        </StackPanel>
+    </ScrollViewer>
 </Window>

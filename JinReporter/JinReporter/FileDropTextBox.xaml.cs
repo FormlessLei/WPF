@@ -18,18 +18,41 @@ namespace JinReporter
 {
     public partial class FileDropTextBox : UserControl
     {
+        // 定义依赖属性
+        public static readonly DependencyProperty TextProperty =
+            DependencyProperty.Register("Text", typeof(string), typeof(FileDropTextBox),
+                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnTextChanged));
+
+        public string Text
+        {
+            get => (string)GetValue(TextProperty);
+            set => SetValue(TextProperty, value);
+        }
+
+        private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var control = (FileDropTextBox)d;
+            control.PathTextBox.Text = e.NewValue?.ToString();
+        }
+
         public FileDropTextBox()
         {
             InitializeComponent();
             PathTextBox.AllowDrop = true;
             PathTextBox.PreviewDragOver += PathTextBox_PreviewDragOver;
             PathTextBox.Drop += PathTextBox_Drop;
+            PathTextBox.TextChanged += PathTextBox_TextChanged;
         }
 
-        public string Text
+        //public string Text
+        //{
+        //    get => PathTextBox.Text;
+        //    set => PathTextBox.Text = value;
+        //}
+        private void PathTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            get => PathTextBox.Text;
-            set => PathTextBox.Text = value;
+            // 更新依赖属性值
+            Text = PathTextBox.Text;
         }
 
         private void PathTextBox_PreviewDragOver(object sender, DragEventArgs e)

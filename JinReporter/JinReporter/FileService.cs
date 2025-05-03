@@ -200,103 +200,102 @@ namespace JinReporter.Services
             }
         }
 
-        public void SaveData(DataTable table, string filePath)
-        {
-            string extension = Path.GetExtension(filePath).ToLower();
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+        //public void SaveData(DataTable table, string filePath)
+        //{
+        //    string extension = Path.GetExtension(filePath).ToLower();
+        //    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
-            switch (extension)
-            {
-                case ".csv":
-                    SaveAsCsv(table, filePath);
-                    break;
-                case ".xlsx":
-                case ".xls":
-                    //SaveAsExcel(table, filePath);
-                    SaveWithTemplate(table, filePath);
-                    break;
-                default:
-                    var newPath = Path.ChangeExtension(filePath, ".csv");
-                    SaveAsCsv(table, newPath);
-                    break;
-            }
-        }
+        //    switch (extension)
+        //    {
+        //        case ".csv":
+        //            SaveAsCsv(table, filePath);
+        //            break;
+        //        case ".xlsx":
+        //        case ".xls":
+        //            SaveWithTemplate(table, filePath);
+        //            break;
+        //        default:
+        //            var newPath = Path.ChangeExtension(filePath, ".csv");
+        //            SaveAsCsv(table, newPath);
+        //            break;
+        //    }
+        //}
 
-        private void SaveAsCsv(DataTable table, string filePath)
-        {
-            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                Encoding = new UTF8Encoding(true),
-                ShouldQuote = args => true
-            };
+        //private void SaveAsCsv(DataTable table, string filePath)
+        //{
+        //    var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        //    {
+        //        Encoding = new UTF8Encoding(true),
+        //        ShouldQuote = args => true
+        //    };
 
-            using var writer = new StreamWriter(filePath, false, config.Encoding);
-            using var csv = new CsvWriter(writer, config);
+        //    using var writer = new StreamWriter(filePath, false, config.Encoding);
+        //    using var csv = new CsvWriter(writer, config);
 
-            foreach (DataColumn column in table.Columns)
-            {
-                csv.WriteField(column.ColumnName);
-            }
-            csv.NextRecord();
+        //    foreach (DataColumn column in table.Columns)
+        //    {
+        //        csv.WriteField(column.ColumnName);
+        //    }
+        //    csv.NextRecord();
 
-            foreach (DataRow row in table.Rows)
-            {
-                foreach (var item in row.ItemArray)
-                {
-                    csv.WriteField(item);
-                }
-                csv.NextRecord();
-            }
-        }
+        //    foreach (DataRow row in table.Rows)
+        //    {
+        //        foreach (var item in row.ItemArray)
+        //        {
+        //            csv.WriteField(item);
+        //        }
+        //        csv.NextRecord();
+        //    }
+        //}
 
-        private void SaveAsExcel(DataTable table, string filePath, string customSheetName = null)
-        {
-            var file = new FileInfo(filePath);
-            using var package = new ExcelPackage(file);
+        //private void SaveAsExcel(DataTable table, string filePath, string customSheetName = null)
+        //{
+        //    var file = new FileInfo(filePath);
+        //    using var package = new ExcelPackage(file);
 
-            // 确定工作表名称（优先使用自定义名称，否则使用日期）
-            string baseSheetName = !string.IsNullOrWhiteSpace(customSheetName)
-                ? customSheetName
-                : DateTime.Today.ToString("yyyy-MM-dd");
+        //    // 确定工作表名称（优先使用自定义名称，否则使用日期）
+        //    string baseSheetName = !string.IsNullOrWhiteSpace(customSheetName)
+        //        ? customSheetName
+        //        : DateTime.Today.ToString("yyyy-MM-dd");
 
-            // 清理非法字符（Excel工作表名称不能包含:\/?*[]）
-            string sanitizedName = new string(baseSheetName
-                .Where(c => !Path.GetInvalidFileNameChars().Contains(c))
-                .ToArray())
-                .Trim();
+        //    // 清理非法字符（Excel工作表名称不能包含:\/?*[]）
+        //    string sanitizedName = new string(baseSheetName
+        //        .Where(c => !Path.GetInvalidFileNameChars().Contains(c))
+        //        .ToArray())
+        //        .Trim();
 
-            // 确保名称长度合法（31字符限制）和非空
-            if (sanitizedName.Length > 31)
-            {
-                sanitizedName = sanitizedName.Substring(0, 31);
-            }
-            if (string.IsNullOrEmpty(sanitizedName))
-            {
-                sanitizedName = "Data";
-            }
+        //    // 确保名称长度合法（31字符限制）和非空
+        //    if (sanitizedName.Length > 31)
+        //    {
+        //        sanitizedName = sanitizedName.Substring(0, 31);
+        //    }
+        //    if (string.IsNullOrEmpty(sanitizedName))
+        //    {
+        //        sanitizedName = "Data";
+        //    }
 
-            // 确保名称唯一
-            string sheetName = sanitizedName;
-            int counter = 1;
-            while (package.Workbook.Worksheets.Any(ws => ws.Name == sheetName))
-            {
-                sheetName = $"{sanitizedName}_{counter++}";
-                if (sheetName.Length > 31)
-                {
-                    sheetName = $"S{counter}";
-                }
-            }
+        //    // 确保名称唯一
+        //    string sheetName = sanitizedName;
+        //    int counter = 1;
+        //    while (package.Workbook.Worksheets.Any(ws => ws.Name == sheetName))
+        //    {
+        //        sheetName = $"{sanitizedName}_{counter++}";
+        //        if (sheetName.Length > 31)
+        //        {
+        //            sheetName = $"S{counter}";
+        //        }
+        //    }
 
-            // 创建工作表并保存
-            var worksheet = package.Workbook.Worksheets.Add(sheetName);
-            worksheet.Cells.LoadFromDataTable(table, true);
-            worksheet.Cells.Style.Numberformat.Format = "@";
-            worksheet.Cells.AutoFitColumns();
+        //    // 创建工作表并保存
+        //    var worksheet = package.Workbook.Worksheets.Add(sheetName);
+        //    worksheet.Cells.LoadFromDataTable(table, true);
+        //    worksheet.Cells.Style.Numberformat.Format = "@";
+        //    worksheet.Cells.AutoFitColumns();
 
-            package.Save();
-        }
+        //    package.Save();
+        //}
 
-        public void SaveWithTemplate(DataTable data, string filePath, string templateSheetName = "模板")
+        public void SaveWithTemplate(DataTable data, string filePath, string suffix, string templateSheetName = "模板")
         {
             var file = new FileInfo(filePath);
             using var package = new ExcelPackage(file);
@@ -324,7 +323,7 @@ namespace JinReporter.Services
             }
 
             // 创建基于日期的新工作表名称
-            string newSheetName = GenerateNewSheetName(package, DateTime.Today.ToString("yyyy-MM-dd"));
+            string newSheetName = GenerateNewSheetName(package, $"{DateTime.Today.ToString("yyyy-MM-dd")}_{suffix}");
 
             // 复制模板到新工作表
             var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
@@ -363,5 +362,54 @@ namespace JinReporter.Services
 
             return sheetName;
         }
+
+        public DataTable ReadExcelSheet(ExcelPackage package, string sheetName)
+        {
+            var sheet = package.Workbook.Worksheets[sheetName];
+            if (sheet == null) throw new Exception($"Sheet不存在: {sheetName}");
+
+            var table = new DataTable();
+
+            // 读取Sheet内容到DataTable
+            foreach (var firstRowCell in sheet.Cells[1, 1, 1, sheet.Dimension.End.Column])
+            {
+                table.Columns.Add(firstRowCell.Text);
+            }
+
+            for (int rowNum = 1; rowNum <= sheet.Dimension.End.Row; rowNum++)
+            {
+                var row = table.NewRow();
+                for (int colNum = 1; colNum <= sheet.Dimension.End.Column; colNum++)
+                {
+                    row[colNum - 1] = sheet.Cells[rowNum, colNum].Text;
+                }
+                table.Rows.Add(row);
+            }
+
+            return table;
+        }
+
+        public void CreateResultSheet(ExcelPackage package, ExcelWorksheet templateSheet,
+                                    DataTable data, string newSheetName)
+        {
+            // 确保Sheet名称唯一
+            newSheetName = GenerateNewSheetName(package, newSheetName);
+
+            // 复制模板样式
+            var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
+
+            // 填充数据
+            for (int i = 2; i < data.Rows.Count - 1; i++)
+            {
+                for (int j = 0; j < data.Columns.Count; j++)
+                {
+                    var configCell = newSheet.Cells[2, j + 1].Text;
+                    if (configCell == ReportProcessor.NeglectMarker) continue;
+
+                    newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
+                }
+            }
+        }
+
     }
 }

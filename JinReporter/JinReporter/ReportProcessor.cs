@@ -12,8 +12,12 @@ namespace JinReporter.Services
         private const string Separator = "???";
         public const string NeglectMarker = "-1";
 
+        private HashSet<int> _negCols;
+
         public void ProcessTables(DataTable countryData, DataTable productData, DataTable template)
         {
+            _negCols = new HashSet<int>();
+
             // Step 1: 解析模板结构
             ParseTemplateStructure(template, out int targetStartRow, out int targetEndRow, out int sumStartRow);
             _sumStartRow = sumStartRow;
@@ -29,6 +33,9 @@ namespace JinReporter.Services
 
             // Step 5: 计算差值
             CalculateDifferences(template);
+
+            _negCols.Clear();
+            _negCols = null;
         }
 
         private void ParseTemplateStructure(DataTable template, out int dataStartRow, out int dataEndRow, out int sumStartRow)
@@ -69,7 +76,6 @@ namespace JinReporter.Services
             }
         }
 
-        private HashSet<int> _negCols = new HashSet<int>();
         private bool IsNegCol(int col)
         {
             return _negCols.Contains(col);
@@ -118,21 +124,20 @@ namespace JinReporter.Services
 
                 if (IsNegCol(templateCol)) continue;
 
-                double sum = 0;
+                decimal sum = 0;
                 int count = 0;
                 foreach (DataRow productRow in productRows)
                 {
                     if (int.TryParse(dataSourceCol, out int colIndex))
                     {
-                        sum += ConvertToDouble(productRow[colIndex - 1]);
+                        sum += ConvertToDecimal(productRow[colIndex - 1]);
                         count++;
                     }
                     else if (productRow.Table.Columns.Contains(dataSourceCol))
                     {
-                        sum += ConvertToDouble(productRow[dataSourceCol]);
+                        sum += ConvertToDecimal(productRow[dataSourceCol]);
                     }
                 }
-                MainWindow.LogMsg($"sum Count:{count}");
                 templateRow[templateCol] = sum;
             }
         }
@@ -144,10 +149,10 @@ namespace JinReporter.Services
             for (int col = 2; col < template.Columns.Count; col++)
             {
                 if (IsNegCol(col)) continue;
-                double total = 0;
+                decimal total = 0;
                 for (int row = targetStartRow; row <= targetEndRow; row++)
                 {
-                    total += ConvertToDouble(template.Rows[row][col]);
+                    total += ConvertToDecimal(template.Rows[row][col]);
                 }
                 sumRow[col] = total;
             }
@@ -163,18 +168,18 @@ namespace JinReporter.Services
                 if (IsNegCol(col)) continue;
 
                 string dataSourceCol = configRow[col].ToString();
-                double countryTotal = 0;
+                decimal countryTotal = 0;
 
                 // 计算国家数据总和
                 foreach (DataRow countryRow in countryData.Rows)
                 {
                     if (int.TryParse(dataSourceCol, out int colIndex))
                     {
-                        countryTotal += ConvertToDouble(countryRow[colIndex]);
+                        countryTotal += ConvertToDecimal(countryRow[colIndex - 1]);
                     }
                     else if (countryData.Columns.Contains(dataSourceCol))
                     {
-                        countryTotal += ConvertToDouble(countryRow[dataSourceCol]);
+                        countryTotal += ConvertToDecimal(countryRow[dataSourceCol]);
                     }
                 }
 
@@ -198,8 +203,8 @@ namespace JinReporter.Services
             {
                 if (IsNegCol(col)) continue;
 
-                double country = ConvertToDouble(countrySumRow[col]);
-                double product = ConvertToDouble(productSumRow[col]);
+                decimal country = ConvertToDecimal(countrySumRow[col]);
+                decimal product = ConvertToDecimal(productSumRow[col]);
                 diffRow[col] = country - product;
             }
         }
@@ -219,6 +224,22 @@ namespace JinReporter.Services
                 return result;
             }
             return 0;
+        }
+
+        private decimal ConvertToDecimal(object value)
+        {
+            if (value == DBNull.Value || value == null) return 0m;
+
+            string strValue = value.ToString()
+                .Replace("\"", "")
+                .Replace(",", "")
+                .Trim();
+
+            if (decimal.TryParse(strValue, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal result))
+            {
+                return result;
+            }
+            return 0m;
         }
 
         public class TemplateStructure

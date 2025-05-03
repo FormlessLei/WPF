@@ -6,13 +6,19 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Path = System.IO.Path;
+using System.Collections.ObjectModel;
+using System.Linq;
+using ExcelDataReader;
+using System.Collections.Generic;
 
 namespace JinReporter
 {
     public partial class MainWindow : Window
     {
+        private readonly ObservableCollection<DataSourceConfig> _dataSources;
         private readonly FileService _fileService;
         private readonly ReportProcessor _reportProcessor;
+        private List<TemplateInfo> _detectedTemplates;
 
         public MainWindow()
         {
@@ -20,32 +26,47 @@ namespace JinReporter
 
             _fileService = new FileService();
             _reportProcessor = new ReportProcessor();
+            _dataSources = new ObservableCollection<DataSourceConfig>();
+            _detectedTemplates = new List<TemplateInfo>();
 
-            SetDefaultPaths();
+            DataSourceControls.ItemsSource = _dataSources;
+
+            //SetDefaultPaths();
         }
 
-        private void SetDefaultPaths()
-        {
-            string dataSourcePath = @"C:\Users\Lei\Desktop\DataSource";
-            Table1Path.Text = Path.Combine(dataSourcePath, "表格1.csv");
-            Table2Path.Text = Path.Combine(dataSourcePath, "表格2.csv");
-            Table3Path.Text = Path.Combine(dataSourcePath, "表格3.xlsx");
-        }
-
-        private void ProcessButton_Click(object sender, RoutedEventArgs e)
+        private void ConfirmTemplate_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (!ValidateInputFiles()) return;
+                string templatePath = TemplateFileBox.Text;
+                if (!File.Exists(templatePath))
+                {
+                    MessageBox.Show("模板文件不存在！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-                var table1 = _fileService.ReadDataFile(Table1Path.Text);
-                var table2 = _fileService.ReadDataFile(Table2Path.Text);
-                var table3 = _fileService.ReadDataFile(Table3Path.Text);
+                // 检测模板Sheet
+                _detectedTemplates = DetectTemplates(templatePath);
+                if (_detectedTemplates.Count == 0)
+                {
+                    MessageBox.Show("未找到有效的模板Sheet！", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-                _reportProcessor.ProcessTables(table1, table2, table3);
-                _fileService.SaveData(table3, Table3Path.Text);
+                // 生成对应的数据源配置
+                _dataSources.Clear();
+                foreach (var template in _detectedTemplates)
+                {
+                    _dataSources.Add(new DataSourceConfig
+                    {
+                        TemplateName = template.TemplateName,
+                        CountryTablePath = "",
+                        ProductTablePath = ""
+                    });
+                }
 
-                MessageBox.Show("处理完成！");
+                MessageBox.Show($"已检测到 {_detectedTemplates.Count} 个模板", "成功",
+                              MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -53,22 +74,134 @@ namespace JinReporter
             }
         }
 
-        private bool ValidateInputFiles()
+        private List<TemplateInfo> DetectTemplates(string filePath)
         {
-            if (!File.Exists(Table1Path.Text))
+            var templates = new List<TemplateInfo>();
+
+            using (var stream = File.OpenRead(filePath))
+            using (var reader = ExcelReaderFactory.CreateReader(stream))
             {
-                ShowError("表格1文件不存在！");
-                return false;
+                do
+                {
+                    string sheetName = reader.Name;
+                    if (sheetName.StartsWith("模板_"))
+                    {
+                        string templateName = sheetName.Substring(3); // 去掉"模板_"前缀
+                        templates.Add(new TemplateInfo
+                        {
+                            SheetName = sheetName,
+                            TemplateName = templateName
+                        });
+                    }
+                } while (reader.NextResult());
             }
 
-            if (!File.Exists(Table2Path.Text))
-            {
-                ShowError("表格2文件不存在！");
-                return false;
-            }
-
-            return true;
+            return templates;
         }
+
+
+        private void ProcessButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string templatePath = TemplateFileBox.Text;
+
+                // 验证所有数据源文件
+                foreach (var config in _dataSources)
+                {
+                    if (!File.Exists(config.CountryTablePath) || !File.Exists(config.ProductTablePath))
+                    {
+                        MessageBox.Show($"请检查{config.TemplateName}的数据源文件！", "错误",
+                                      MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
+                // 处理每个模板
+                using (var package = new ExcelPackage(new FileInfo(templatePath)))
+                {
+                    foreach (var config in _dataSources)
+                    {
+                        ProcessSingleTemplate(package, config);
+                    }
+                    package.Save();
+                }
+
+                MessageBox.Show("所有模板处理完成！", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                HandleError(ex);
+            }
+        }
+
+        private void ProcessSingleTemplate(ExcelPackage package, DataSourceConfig config)
+        {
+            // 找到对应的模板Sheet
+            var templateSheet = package.Workbook.Worksheets["模板_" + config.TemplateName];
+            if (templateSheet == null)
+            {
+                throw new Exception($"找不到模板Sheet: {config.TemplateName}");
+            }
+
+            // 读取数据
+            var countryData = _fileService.ReadDataFile(config.CountryTablePath);
+            var productData = _fileService.ReadDataFile(config.ProductTablePath);
+            var templateData = _fileService.ReadExcelSheet(package, templateSheet.Name);
+
+            // 处理数据
+            _reportProcessor.ProcessTables(countryData, productData, templateData);
+
+            // 创建结果Sheet
+            string resultSheetName = $"{DateTime.Today:yyyy-MM-dd}_{config.TemplateName}";
+            _fileService.CreateResultSheet(package, templateSheet, templateData, resultSheetName);
+        }
+
+        //private void SetDefaultPaths()
+        //{
+        //    string dataSourcePath = @"C:\Users\Lei\Desktop\DataSource";
+        //    Table1Path.Text = Path.Combine(dataSourcePath, "表格1.csv");
+        //    Table2Path.Text = Path.Combine(dataSourcePath, "表格2.csv");
+        //    Table3Path.Text = Path.Combine(dataSourcePath, "表格3.xlsx");
+        //}
+
+        //private void ProcessButton_Click(object sender, RoutedEventArgs e)
+        //{
+        //    try
+        //    {
+        //        if (!ValidateInputFiles()) return;
+
+        //        var table1 = _fileService.ReadDataFile(Table1Path.Text);
+        //        var table2 = _fileService.ReadDataFile(Table2Path.Text);
+        //        var table3 = _fileService.ReadDataFile(Table3Path.Text);
+
+        //        _reportProcessor.ProcessTables(table1, table2, table3);
+        //        _fileService.SaveData(table3, Table3Path.Text);
+
+        //        MessageBox.Show("处理完成！");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        HandleError(ex);
+        //    }
+        //}
+
+        //private bool ValidateInputFiles()
+        //{
+        //    if (!File.Exists(Table1Path.Text))
+        //    {
+        //        ShowError("表格1文件不存在！");
+        //        return false;
+        //    }
+
+        //    if (!File.Exists(Table2Path.Text))
+        //    {
+        //        ShowError("表格2文件不存在！");
+        //        return false;
+        //    }
+
+        //    return true;
+        //}
 
         private void HandleError(Exception ex)
         {
