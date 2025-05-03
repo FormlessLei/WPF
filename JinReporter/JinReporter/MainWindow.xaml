@@ -1,0 +1,35 @@
+﻿<Window x:Class="JinReporter.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:JinReporter"
+        mc:Ignorable="d"
+        Title="表格处理辅助工具" Height="350" Width="500">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 表格1路径 -->
+        <Label Grid.Row="0" Content="表格1路径(国家数据):"/>
+        <local:FileDropTextBox x:Name="Table1Path" Grid.Row="1" Margin="0,0,0,10"/>
+
+        <!-- 表格2路径 -->
+        <Label Grid.Row="2" Content="表格2路径(商品数据):"/>
+        <local:FileDropTextBox x:Name="Table2Path" Grid.Row="3" Margin="0,0,0,10"/>
+
+        <!-- 表格3路径 -->
+        <Label Grid.Row="4" Content="表格3路径(商品数据):"/>
+        <local:FileDropTextBox  x:Name="Table3Path" Grid.Row="5"   Margin="0,0,0,10"/>
+
+        <!-- 处理按钮 -->
+        <Button Grid.Row="6" Content="开始转换" Height="30" Click="ProcessButton_Click"/>
+    </Grid>
+</Window>
