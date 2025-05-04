@@ -5,37 +5,92 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JinReporter"
         mc:Ignorable="d"
-        Title="多模板表格处理工具" Height="500" Width="650">
-    <ScrollViewer>
-        <StackPanel Margin="15">
-            <!-- 模板文件输入区域 -->
-            <GroupBox Header="模板文件">
-                <StackPanel>
-                    <local:FileDropTextBox x:Name="TemplateFileBox" Height="30"/>
-                    <Button Content="确认模板" Click="ConfirmTemplate_Click" 
-                            Margin="0,10,0,0" Width="80" HorizontalAlignment="Left"/>
-                </StackPanel>
-            </GroupBox>
+        Title="多模板表格处理工具" Height="600" Width="650"
+        Icon="Rep.ico">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- 模板确认区 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 拖放区 -->
+            <RowDefinition Height="*"/>
+            <!-- 动态输入区 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 状态栏+操作按钮 -->
+        </Grid.RowDefinitions>
 
-            <!-- 动态生成的数据源输入区域 -->
-            <ItemsControl x:Name="DataSourceControls" Margin="0,20,0,0">
+        <!-- 1. 模板确认区域 -->
+        <GroupBox Grid.Row="0" Header="模板文件" Margin="10,10,10,5">
+            <StackPanel>
+                <local:FileDropTextBox x:Name="TemplateFileBox" Height="30"/>
+                <Button Content="确认模板" Click="ConfirmTemplate_Click" 
+                        Width="80" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 2. 拖放区域 -->
+        <Border x:Name="DropZone" Grid.Row="1"
+                Background="#F5F5F5" 
+                CornerRadius="5"
+                BorderThickness="1"
+                BorderBrush="#DDD"
+                Margin="10,0,10,10"
+                Height="40"
+                HorizontalAlignment="Stretch"
+                Visibility="Collapsed"
+                AllowDrop="True"
+                DragEnter="DropZone_DragEnter"
+                DragLeave="DropZone_DragLeave"
+                Drop="DropZone_Drop">
+            <TextBlock Text="用[Ctrl+鼠标左键]，按顺序选中多个文件，拖到此处批量分配" 
+                      VerticalAlignment="Center" 
+                      HorizontalAlignment="Left"
+                      Margin="10,0,0,0"
+                      FontSize="14" 
+                      Foreground="#666"/>
+        </Border>
+
+        <!-- 3. 动态输入区域 -->
+        <ScrollViewer Grid.Row="2" Margin="0,0,0,0">
+            <ItemsControl x:Name="DataSourceControls" Margin="10,0,10,0">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <GroupBox Header="{Binding TemplateName}" Margin="0,0,0,15">
+                        <GroupBox Header="{Binding TemplateName}" Margin="0,0,0,10">
                             <StackPanel>
                                 <Label Content="国家数据表路径:"/>
-                                <local:FileDropTextBox Text="{Binding CountryTablePath, Mode=TwoWay}"/>
-
+                                <local:FileDropTextBox Text="{Binding CountryTablePath, Mode=TwoWay}" 
+                                                     Margin="0,3,0,5" Height="28"/>
                                 <Label Content="商品数据表路径:"/>
-                                <local:FileDropTextBox Text="{Binding ProductTablePath, Mode=TwoWay}"/>
+                                <local:FileDropTextBox Text="{Binding ProductTablePath, Mode=TwoWay}" 
+                                                     Margin="0,3,0,5" Height="28"/>
                             </StackPanel>
                         </GroupBox>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </ScrollViewer>
 
-            <!-- 操作按钮 -->
-            <Button Content="开始处理" Click="ProcessButton_Click" Height="35" Margin="0,20"/>
-        </StackPanel>
-    </ScrollViewer>
+        <!-- 4. 底部操作区 -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 状态栏 -->
+            <StatusBar Background="#FFF0F0F0" Grid.Column="0">
+                <StatusBarItem>
+                    <TextBlock x:Name="StatusText" Padding="5,0"/>
+                </StatusBarItem>
+            </StatusBar>
+
+            <!-- 操作按钮（固定在右下角） -->
+            <Button Grid.Column="1" 
+                    Content="开始处理" 
+                    Click="ProcessButton_Click" 
+                    Width="100" Height="35" 
+                    Margin="0,0,10,5"
+                    VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
 </Window>

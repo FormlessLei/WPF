@@ -10,6 +10,12 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ExcelDataReader;
 using System.Collections.Generic;
+using System.Windows.Threading;
+using System.Windows.Media;
+using Microsoft.WindowsAPICodePack.Dialogs;
+using System.Windows.Controls.Primitives;
+using System.Windows.Controls;
+using System.Windows.Media.Effects;
 
 namespace JinReporter
 {
@@ -19,6 +25,10 @@ namespace JinReporter
         private readonly FileService _fileService;
         private readonly ReportProcessor _reportProcessor;
         private List<TemplateInfo> _detectedTemplates;
+
+        private List<FileDropTextBox> _fileInputs = new List<FileDropTextBox>();
+        private int _currentFillIndex = 0;
+
 
         public MainWindow()
         {
@@ -65,12 +75,104 @@ namespace JinReporter
                     });
                 }
 
-                MessageBox.Show($"已检测到 {_detectedTemplates.Count} 个模板", "成功",
-                              MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateStatus($"就绪 | 检测到 {_detectedTemplates.Count} 个模板");
+
+                // 2. 显示拖放区（在确认模板后激活）
+                DropZone.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
                 HandleError(ex);
+            }
+        }
+
+        private void DropZone_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+
+            //var files = ((string[])e.Data.GetData(DataFormats.FileDrop))
+            //    .OrderBy(f => f) // 按文件名排序
+            //    .ToArray();
+
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+
+            // 获取所有有效输入框
+            var inputs = GetActiveInputs();
+
+            // 智能分配（一对一填充）
+            for (int i = 0; i < Math.Min(files.Length, inputs.Count); i++)
+            {
+                inputs[i].Text = files[i];
+            }
+
+            ResetDropZoneAppearance();
+            // 自动隐藏（2秒后）
+            //var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            //timer.Tick += (s, _) => { DropZone.Visibility = Visibility.Collapsed; timer.Stop(); };
+            //timer.Start();
+        }
+        private void DropZone_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                // 使用更柔和的视觉反馈
+                DropZone.Background = new SolidColorBrush(Color.FromArgb(255, 220, 240, 255));
+                DropZone.BorderBrush = Brushes.SteelBlue;
+                DropZone.Effect = new DropShadowEffect
+                {
+                    Color = Colors.SteelBlue,
+                    BlurRadius = 8,
+                    ShadowDepth = 0
+                };
+            }
+        }
+
+        private void DropZone_DragLeave(object sender, DragEventArgs e)
+        {
+            ResetDropZoneAppearance();
+        }
+
+        private void ResetDropZoneAppearance()
+        {
+            // 使用资源颜色保证主题一致性
+            DropZone.Background = (Brush)FindResource("DropZoneBackground");
+            DropZone.BorderBrush = (Brush)FindResource("DropZoneBorder");
+            DropZone.Effect = null;
+        }
+
+        private List<TextBox> GetActiveInputs()
+        {
+            var inputs = new List<TextBox>();
+            foreach (var item in DataSourceControls.Items)
+            {
+                var container = DataSourceControls.ItemContainerGenerator.ContainerFromItem(item);
+                if (container != null)
+                {
+                    inputs.AddRange(FindVisualChildren<TextBox>(container)
+                        .Where(t => t.IsVisible));
+                }
+            }
+            return inputs;
+        }
+
+        // 辅助方法：查找所有子控件
+        public static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
             }
         }
 
@@ -127,7 +229,19 @@ namespace JinReporter
                     package.Save();
                 }
 
-                MessageBox.Show("所有模板处理完成！", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBoxResult result = MessageBox.Show("处理完成，是否打开模板文件?", "打开", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = TemplateFileBox.Text,
+                        UseShellExecute = true
+                    });
+                }
+
+
+                UpdateStatus("所有模板处理完成！");
             }
             catch (Exception ex)
             {
@@ -221,6 +335,24 @@ namespace JinReporter
         {
 
             System.Diagnostics.Debug.WriteLine(msg);
+        }
+
+        private void UpdateStatus(string message)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = message;
+
+                StatusText.Foreground = message.StartsWith("错误") ? Brushes.Red : Brushes.DarkBlue;
+
+                //// 自动淡出非错误消息
+                //if (!message.StartsWith("错误"))
+                //{
+                //    var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+                //    timer.Tick += (s, e) => { StatusText.Text = ""; timer.Stop(); };
+                //    timer.Start();
+                //}
+            });
         }
     }
 }

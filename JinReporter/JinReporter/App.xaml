@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:JinReporter"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <SolidColorBrush x:Key="DropZoneBackground" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="DropZoneBorder" Color="#DDD"/>
     </Application.Resources>
 </Application>

@@ -18,6 +18,23 @@ namespace JinReporter
 {
     public partial class FileDropTextBox : UserControl
     {
+        // 新增事件用于通知外部当前拖放的是第几个文件
+        public event Action<FileDropTextBox, int> FileDropped;
+
+        private void OnDrop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files.Length == 0) return;
+
+            Text = files[0];
+            FileDropped?.Invoke(this, files.Length);
+
+            // 可视化反馈
+            Background = Brushes.Transparent;
+        }
+
         // 定义依赖属性
         public static readonly DependencyProperty TextProperty =
             DependencyProperty.Register("Text", typeof(string), typeof(FileDropTextBox),
@@ -40,8 +57,18 @@ namespace JinReporter
             InitializeComponent();
             PathTextBox.AllowDrop = true;
             PathTextBox.PreviewDragOver += PathTextBox_PreviewDragOver;
-            PathTextBox.Drop += PathTextBox_Drop;
+            PathTextBox.Drop += OnDrop;
             PathTextBox.TextChanged += PathTextBox_TextChanged;
+
+            PathTextBox.DragEnter += OnDragEnter;
+
+        }
+        private void OnDragEnter(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+            e.Handled = true;
         }
 
         //public string Text
