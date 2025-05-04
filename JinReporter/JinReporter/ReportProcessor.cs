@@ -32,7 +32,7 @@ namespace JinReporter.Services
             ProcessCountryData(countryData, template);
 
             // Step 5: 计算差值
-            CalculateDifferences(template);
+            //CalculateDifferences(template);
 
             _negCols.Clear();
             _negCols = null;

@@ -2,10 +2,13 @@
 using CsvHelper.Configuration;
 using ExcelDataReader;
 using OfficeOpenXml;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.RefAndLookup;
 using OfficeOpenXml.Packaging.Ionic.Zlib;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -406,10 +409,84 @@ namespace JinReporter.Services
                     var configCell = newSheet.Cells[2, j + 1].Text;
                     if (configCell == ReportProcessor.NeglectMarker) continue;
 
+                    if (ShouldSkipCell(newSheet.Cells[2, j + 1], newSheet.Cells[i + 1, j + 1], data.Rows[i][j]))
+                        continue;
+
                     newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
                 }
             }
         }
 
+        private bool ShouldSkipCell(ExcelRange configCell,ExcelRange targetCell ,object dataValue)
+        {
+            // 1. 检查忽略标记
+            if (configCell.Text == ReportProcessor.NeglectMarker)
+                return true;
+
+            // 2. 检查公式
+            if (!string.IsNullOrEmpty(targetCell.Formula))
+                return true;
+
+            // 3. 检查空值
+            return IsEmptyData(dataValue);
+        }
+
+        // 辅助方法：检查是否为空数据
+        private bool IsEmptyData(object value)
+        {
+            return value == null ||
+                   value == DBNull.Value ||
+                   (value is string str && string.IsNullOrWhiteSpace(str));
+        }
+
+        public void ProcessAndSaveResults(List<DataSourceConfig> configs, string templatePath)
+        {
+            // 创建全新的Excel文件
+            string outputPath = GetOutputFilePath();
+
+            using (var package = new ExcelPackage(new FileInfo(outputPath)))
+            {
+                // 读取模板文件（只读模式）
+                using (var templateStream = File.OpenRead(templatePath))
+                using (var templatePackage = new ExcelPackage(templateStream))
+                {
+                    foreach (var config in configs)
+                    {
+                        // 处理每个模板
+                        var templateSheet = templatePackage.Workbook.Worksheets[config.TemplateName];
+                        if (templateSheet != null)
+                        {
+                            // 创建结果Sheet（复制模板）
+                            string newSheetName = $"{DateTime.Today:yyyyMMdd}_{config.TemplateName}";
+                            var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
+
+                            // 填充数据...
+                            var countryData = ReadDataFile(config.CountryTablePath);
+                            var productData = ReadDataFile(config.ProductTablePath);
+                            var templateData = ReadExcelSheet(package, templateSheet.Name);
+
+                            // 处理数据
+                            new ReportProcessor().ProcessTables(countryData, productData, templateData);
+                        }
+                    }
+                }
+
+                // 保存新文件
+                package.Save();
+            }
+
+            // 打开结果文件
+            Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
+        }
+
+        private string GetOutputFilePath()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "JinReporter_Results");
+
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+        }
     }
 }

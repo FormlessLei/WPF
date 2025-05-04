@@ -219,6 +219,9 @@ namespace JinReporter
                     }
                 }
 
+                // TODO 后续替换成创建新文件
+                //_fileService.ProcessAndSaveResults(_dataSources.ToList(), TemplateFileBox.Text);
+
                 // 处理每个模板
                 using (var package = new ExcelPackage(new FileInfo(templatePath)))
                 {
@@ -353,6 +356,16 @@ namespace JinReporter
                 //    timer.Start();
                 //}
             });
+        }
+
+        private string GetOutputFilePath()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "JinReporter_Results");
+
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
         }
     }
 }
