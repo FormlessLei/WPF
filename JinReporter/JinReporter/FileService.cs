@@ -412,7 +412,16 @@ namespace JinReporter.Services
                     if (ShouldSkipCell(newSheet.Cells[2, j + 1], newSheet.Cells[i + 1, j + 1], data.Rows[i][j]))
                         continue;
 
-                    newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
+                    //newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
+
+                    if (decimal.TryParse(data.Rows[i][j].ToString(), out decimal numValue))
+                    {
+                        newSheet.Cells[i + 1, j + 1].Value = numValue;
+                    }
+                    else
+                    {
+                        newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j]; // 或处理异常
+                    }
                 }
             }
         }
