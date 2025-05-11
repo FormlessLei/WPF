@@ -1,21 +1,16 @@
-﻿using JinReporter.Services;
-using OfficeOpenXml;
+﻿using ExcelDataReader;
+using JinReporter.Services;
 using System;
-using System.Diagnostics.PerformanceData;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
-using Path = System.IO.Path;
-using System.Collections.ObjectModel;
 using System.Linq;
-using ExcelDataReader;
-using System.Collections.Generic;
-using System.Windows.Threading;
-using System.Windows.Media;
-using Microsoft.WindowsAPICodePack.Dialogs;
-using System.Windows.Controls.Primitives;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 namespace JinReporter
 {
@@ -85,6 +80,67 @@ namespace JinReporter
                 HandleError(ex);
             }
         }
+        
+        private void ProcessButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string templatePath = TemplateFileBox.Text;
+
+                // 验证所有数据源文件
+                foreach (var config in _dataSources)
+                {
+                    if (!File.Exists(config.CountryTablePath) || !File.Exists(config.ProductTablePath))
+                    {
+                        MessageBox.Show($"请检查{config.TemplateName}的数据源文件！", "错误",
+                                      MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
+                var outputPath = _fileService.ProcessAndSaveResults(_dataSources.ToList(), TemplateFileBox.Text);
+
+
+                MessageBoxResult result = MessageBox.Show("处理完成，是否打开结果?", "打开", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // 打开结果文件
+                    Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
+                }
+
+                UpdateStatus("所有模板处理完成！");
+            }
+            catch (Exception ex)
+            {
+                HandleError(ex);
+            }
+        }
+
+        private List<TemplateInfo> DetectTemplates(string filePath)
+        {
+            var templates = new List<TemplateInfo>();
+
+            using (var stream = File.OpenRead(filePath))
+            using (var reader = ExcelReaderFactory.CreateReader(stream))
+            {
+                do
+                {
+                    string sheetName = reader.Name;
+                    if (sheetName.StartsWith("模板_"))
+                    {
+                        string templateName = sheetName.Substring(3); // 去掉"模板_"前缀
+                        templates.Add(new TemplateInfo
+                        {
+                            SheetName = sheetName,
+                            TemplateName = templateName
+                        });
+                    }
+                } while (reader.NextResult());
+            }
+
+            return templates;
+        }
 
         private void DropZone_Drop(object sender, DragEventArgs e)
         {
@@ -140,6 +196,7 @@ namespace JinReporter
             DropZone.Effect = null;
         }
 
+
         private List<TextBox> GetActiveInputs()
         {
             var inputs = new List<TextBox>();
@@ -176,87 +233,7 @@ namespace JinReporter
             }
         }
 
-        private List<TemplateInfo> DetectTemplates(string filePath)
-        {
-            var templates = new List<TemplateInfo>();
 
-            using (var stream = File.OpenRead(filePath))
-            using (var reader = ExcelReaderFactory.CreateReader(stream))
-            {
-                do
-                {
-                    string sheetName = reader.Name;
-                    if (sheetName.StartsWith("模板_"))
-                    {
-                        string templateName = sheetName.Substring(3); // 去掉"模板_"前缀
-                        templates.Add(new TemplateInfo
-                        {
-                            SheetName = sheetName,
-                            TemplateName = templateName
-                        });
-                    }
-                } while (reader.NextResult());
-            }
-
-            return templates;
-        }
-
-
-        private void ProcessButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string templatePath = TemplateFileBox.Text;
-
-                // 验证所有数据源文件
-                foreach (var config in _dataSources)
-                {
-                    if (!File.Exists(config.CountryTablePath) || !File.Exists(config.ProductTablePath))
-                    {
-                        MessageBox.Show($"请检查{config.TemplateName}的数据源文件！", "错误",
-                                      MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-                }
-
-                var outputPath = _fileService.ProcessAndSaveResults(_dataSources.ToList(), TemplateFileBox.Text);
-
-
-                MessageBoxResult result = MessageBox.Show("处理完成，是否打开结果?", "打开", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    // 打开结果文件
-                    Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
-                }
-
-                UpdateStatus("所有模板处理完成！");
-            }
-            catch (Exception ex)
-            {
-                HandleError(ex);
-            }
-        }
-
-        private void HandleError(Exception ex)
-        {
-            string errorDetails = $"[{DateTime.Now}] 错误\n消息：{ex.Message}\n类型：{ex.GetType()}\n堆栈：{ex.StackTrace}";
-
-            MainWindow.LogMsg(errorDetails);
-            Clipboard.SetText(errorDetails);
-
-            MessageBox.Show($"处理过程中发生错误: {ex.Message}", "错误",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-
-        private void ShowError(string message) =>
-            MessageBox.Show(message, "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-
-        static public void LogMsg(string msg)
-        {
-
-            System.Diagnostics.Debug.WriteLine(msg);
-        }
 
         private void UpdateStatus(string message)
         {
@@ -274,6 +251,22 @@ namespace JinReporter
                 //    timer.Start();
                 //}
             });
+        }
+
+        private void HandleError(Exception ex)
+        {
+            string errorDetails = $"[{DateTime.Now}] 错误\n消息：{ex.Message}\n类型：{ex.GetType()}\n堆栈：{ex.StackTrace}";
+
+            Clipboard.SetText(errorDetails);
+
+            MessageBox.Show($"处理过程中发生错误: {ex.Message}", "错误",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        static public void LogMsg(string msg)
+        {
+
+            System.Diagnostics.Debug.WriteLine(msg);
         }
     }
 }

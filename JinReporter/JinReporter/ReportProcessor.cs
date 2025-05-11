@@ -14,6 +14,38 @@ namespace JinReporter.Services
 
         private HashSet<int> _negCols;
 
+
+        private int _sumStartRow;
+        private int ContrySumRow { get => _sumStartRow + 1; }
+        private int ProductSumRow { get => _sumStartRow; }
+        private int DiffRow { get => _sumStartRow - 2; }
+        private int ContryFieldConfigRow { get => _sumStartRow + 2; }
+
+        private bool IsNegCol(int col)
+        {
+            return _negCols.Contains(col);
+        }
+
+        // 辅助方法：获取列映射配置
+        private Dictionary<int, string> GetColumnMappings(DataRow configRow)
+        {
+            var mapping = new Dictionary<int, string>();
+            for (int col = 2; col < configRow.Table.Columns.Count; col++)
+            {
+                string configValue = configRow[col].ToString();
+                if (!string.IsNullOrEmpty(configValue))
+                {
+                    mapping[col] = configValue;
+                }
+                if (configValue == NeglectMarker)
+                {
+                    _negCols.Add(col);
+                }
+            }
+            return mapping;
+        }
+
+
         public void ProcessTables(DataTable countryData, DataTable productData, DataTable template)
         {
             _negCols = new HashSet<int>();
@@ -74,71 +106,45 @@ namespace JinReporter.Services
                 // 处理有效数据行
                 ProcessSingleProductRow(productData, templateRow, columnMapping);
             }
-        }
 
-        private bool IsNegCol(int col)
-        {
-            return _negCols.Contains(col);
-        }
-        // 辅助方法：获取列映射配置
-        private Dictionary<int, string> GetColumnMappings(DataRow configRow)
-        {
-            var mapping = new Dictionary<int, string>();
-            for (int col = 2; col < configRow.Table.Columns.Count; col++)
+            bool IsEmptyTemplateRow(DataRow row)
             {
-                string configValue = configRow[col].ToString();
-                if (!string.IsNullOrEmpty(configValue))
-                {
-                    mapping[col] = configValue;
-                }
-                if (configValue == NeglectMarker)
-                {
-                    _negCols.Add(col);
-                }
+                return string.IsNullOrWhiteSpace(row[0].ToString()) &&
+                       string.IsNullOrWhiteSpace(row[1].ToString());
             }
-            return mapping;
-        }
 
-
-        // 辅助方法：检查是否为空行
-        private bool IsEmptyTemplateRow(DataRow row)
-        {
-            return string.IsNullOrWhiteSpace(row[0].ToString()) &&
-                   string.IsNullOrWhiteSpace(row[1].ToString());
-        }
-
-        // 辅助方法：处理单个商品行
-        private void ProcessSingleProductRow(DataTable productData, DataRow templateRow, Dictionary<int, string> columnMapping)
-        {
-            string productName = templateRow[1].ToString();
-
-            var names = productName.Split(Separator).Select(s => s.Trim());
-            var productRows = productData.AsEnumerable()
-                .Where(row => names.Any(name =>
-                    row.Field<string>("商品名")?.Contains(name, StringComparison.OrdinalIgnoreCase) ?? false));
-
-            foreach (var colPair in columnMapping)
+            void ProcessSingleProductRow(DataTable productData, DataRow templateRow, Dictionary<int, string> columnMapping)
             {
-                int templateCol = colPair.Key;
-                string dataSourceCol = colPair.Value;
+                string productName = templateRow[1].ToString();
 
-                if (IsNegCol(templateCol)) continue;
+                var names = productName.Split(Separator).Select(s => s.Trim());
+                var productRows = productData.AsEnumerable()
+                    .Where(row => names.Any(name =>
+                        row.Field<string>("商品名")?.Contains(name, StringComparison.OrdinalIgnoreCase) ?? false));
 
-                decimal sum = 0;
-                int count = 0;
-                foreach (DataRow productRow in productRows)
+                foreach (var colPair in columnMapping)
                 {
-                    if (int.TryParse(dataSourceCol, out int colIndex))
+                    int templateCol = colPair.Key;
+                    string dataSourceCol = colPair.Value;
+
+                    if (IsNegCol(templateCol)) continue;
+
+                    decimal sum = 0;
+                    int count = 0;
+                    foreach (DataRow productRow in productRows)
                     {
-                        sum += ConvertToDecimal(productRow[colIndex - 1]);
-                        count++;
+                        if (int.TryParse(dataSourceCol, out int colIndex))
+                        {
+                            sum += ConvertToDecimal(productRow[colIndex - 1]);
+                            count++;
+                        }
+                        else if (productRow.Table.Columns.Contains(dataSourceCol))
+                        {
+                            sum += ConvertToDecimal(productRow[dataSourceCol]);
+                        }
                     }
-                    else if (productRow.Table.Columns.Contains(dataSourceCol))
-                    {
-                        sum += ConvertToDecimal(productRow[dataSourceCol]);
-                    }
+                    templateRow[templateCol] = sum;
                 }
-                templateRow[templateCol] = sum;
             }
         }
 
@@ -187,12 +193,6 @@ namespace JinReporter.Services
             }
         }
 
-        private int _sumStartRow;
-        private int ContrySumRow { get => _sumStartRow + 1; }
-        private int ProductSumRow { get => _sumStartRow; }
-        private int DiffRow { get => _sumStartRow - 2; }
-        private int ContryFieldConfigRow { get => _sumStartRow + 2; }
-
         private void CalculateDifferences(DataTable template)
         {
             DataRow countrySumRow = template.Rows[ContrySumRow];
@@ -208,6 +208,7 @@ namespace JinReporter.Services
                 diffRow[col] = country - product;
             }
         }
+
 
         private double ConvertToDouble(object value)
         {
@@ -240,13 +241,6 @@ namespace JinReporter.Services
                 return result;
             }
             return 0m;
-        }
-
-        public class TemplateStructure
-        {
-            public int DataStartRow { get; set; }
-            public int DataEndRow { get; set; }
-            public int SumStartRow { get; set; }
         }
     }
 }
