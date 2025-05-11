@@ -203,150 +203,6 @@ namespace JinReporter.Services
             }
         }
 
-        //public void SaveData(DataTable table, string filePath)
-        //{
-        //    string extension = Path.GetExtension(filePath).ToLower();
-        //    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-
-        //    switch (extension)
-        //    {
-        //        case ".csv":
-        //            SaveAsCsv(table, filePath);
-        //            break;
-        //        case ".xlsx":
-        //        case ".xls":
-        //            SaveWithTemplate(table, filePath);
-        //            break;
-        //        default:
-        //            var newPath = Path.ChangeExtension(filePath, ".csv");
-        //            SaveAsCsv(table, newPath);
-        //            break;
-        //    }
-        //}
-
-        //private void SaveAsCsv(DataTable table, string filePath)
-        //{
-        //    var config = new CsvConfiguration(CultureInfo.InvariantCulture)
-        //    {
-        //        Encoding = new UTF8Encoding(true),
-        //        ShouldQuote = args => true
-        //    };
-
-        //    using var writer = new StreamWriter(filePath, false, config.Encoding);
-        //    using var csv = new CsvWriter(writer, config);
-
-        //    foreach (DataColumn column in table.Columns)
-        //    {
-        //        csv.WriteField(column.ColumnName);
-        //    }
-        //    csv.NextRecord();
-
-        //    foreach (DataRow row in table.Rows)
-        //    {
-        //        foreach (var item in row.ItemArray)
-        //        {
-        //            csv.WriteField(item);
-        //        }
-        //        csv.NextRecord();
-        //    }
-        //}
-
-        //private void SaveAsExcel(DataTable table, string filePath, string customSheetName = null)
-        //{
-        //    var file = new FileInfo(filePath);
-        //    using var package = new ExcelPackage(file);
-
-        //    // 确定工作表名称（优先使用自定义名称，否则使用日期）
-        //    string baseSheetName = !string.IsNullOrWhiteSpace(customSheetName)
-        //        ? customSheetName
-        //        : DateTime.Today.ToString("yyyy-MM-dd");
-
-        //    // 清理非法字符（Excel工作表名称不能包含:\/?*[]）
-        //    string sanitizedName = new string(baseSheetName
-        //        .Where(c => !Path.GetInvalidFileNameChars().Contains(c))
-        //        .ToArray())
-        //        .Trim();
-
-        //    // 确保名称长度合法（31字符限制）和非空
-        //    if (sanitizedName.Length > 31)
-        //    {
-        //        sanitizedName = sanitizedName.Substring(0, 31);
-        //    }
-        //    if (string.IsNullOrEmpty(sanitizedName))
-        //    {
-        //        sanitizedName = "Data";
-        //    }
-
-        //    // 确保名称唯一
-        //    string sheetName = sanitizedName;
-        //    int counter = 1;
-        //    while (package.Workbook.Worksheets.Any(ws => ws.Name == sheetName))
-        //    {
-        //        sheetName = $"{sanitizedName}_{counter++}";
-        //        if (sheetName.Length > 31)
-        //        {
-        //            sheetName = $"S{counter}";
-        //        }
-        //    }
-
-        //    // 创建工作表并保存
-        //    var worksheet = package.Workbook.Worksheets.Add(sheetName);
-        //    worksheet.Cells.LoadFromDataTable(table, true);
-        //    worksheet.Cells.Style.Numberformat.Format = "@";
-        //    worksheet.Cells.AutoFitColumns();
-
-        //    package.Save();
-        //}
-
-        public void SaveWithTemplate(DataTable data, string filePath, string suffix, string templateSheetName = "模板")
-        {
-            var file = new FileInfo(filePath);
-            using var package = new ExcelPackage(file);
-
-            // 检查模板是否存在
-            ExcelWorksheet templateSheet = null;
-            foreach (var sheet in package.Workbook.Worksheets)
-            {
-                if (sheet.Name == templateSheetName)
-                {
-                    templateSheet = sheet;
-                    break;
-                }
-            }
-
-            if (templateSheet == null)
-            {
-                MainWindow.LogMsg($"模板工作表'{templateSheetName}'不存在，使用第一张表");
-                templateSheet = package.Workbook.Worksheets[0];
-            }
-
-            if (templateSheet == null)
-            {
-                throw new FileNotFoundException($"无法获取模版");
-            }
-
-            // 创建基于日期的新工作表名称
-            string newSheetName = GenerateNewSheetName(package, $"{DateTime.Today.ToString("yyyy-MM-dd")}_{suffix}");
-
-            // 复制模板到新工作表
-            var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
-
-            // 填充数据到新工作表（从第2行开始，假设第1行是标题）
-            int startRow = 1; // 从第2行开始填充数据
-            for (int i = 0; i < data.Rows.Count; i++)
-            {
-                for (int j = 0; j < data.Columns.Count; j++)
-                {
-                    var configCell = newSheet.Cells[2, j + 1].Text;
-                    if (configCell == ReportProcessor.NeglectMarker) continue;
-
-                    newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
-                }
-            }
-
-            package.Save();
-        }
-
         private string GenerateNewSheetName(ExcelPackage package, string baseName)
         {
             string sheetName = baseName;
@@ -366,10 +222,9 @@ namespace JinReporter.Services
             return sheetName;
         }
 
-        public DataTable ReadExcelSheet(ExcelPackage package, string sheetName)
+        public DataTable ReadExcelSheet(ExcelWorksheet sheet)
         {
-            var sheet = package.Workbook.Worksheets[sheetName];
-            if (sheet == null) throw new Exception($"Sheet不存在: {sheetName}");
+            if (sheet == null) throw new Exception($"Sheet不存在");
 
             var table = new DataTable();
 
@@ -390,40 +245,6 @@ namespace JinReporter.Services
             }
 
             return table;
-        }
-
-        public void CreateResultSheet(ExcelPackage package, ExcelWorksheet templateSheet,
-                                    DataTable data, string newSheetName)
-        {
-            // 确保Sheet名称唯一
-            newSheetName = GenerateNewSheetName(package, newSheetName);
-
-            // 复制模板样式
-            var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
-
-            // 填充数据
-            for (int i = 2; i < data.Rows.Count - 1; i++)
-            {
-                for (int j = 0; j < data.Columns.Count; j++)
-                {
-                    var configCell = newSheet.Cells[2, j + 1].Text;
-                    if (configCell == ReportProcessor.NeglectMarker) continue;
-
-                    if (ShouldSkipCell(newSheet.Cells[2, j + 1], newSheet.Cells[i + 1, j + 1], data.Rows[i][j]))
-                        continue;
-
-                    //newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
-
-                    if (decimal.TryParse(data.Rows[i][j].ToString(), out decimal numValue))
-                    {
-                        newSheet.Cells[i + 1, j + 1].Value = numValue;
-                    }
-                    else
-                    {
-                        newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j]; // 或处理异常
-                    }
-                }
-            }
         }
 
         private bool ShouldSkipCell(ExcelRange configCell,ExcelRange targetCell ,object dataValue)
@@ -448,10 +269,10 @@ namespace JinReporter.Services
                    (value is string str && string.IsNullOrWhiteSpace(str));
         }
 
-        public void ProcessAndSaveResults(List<DataSourceConfig> configs, string templatePath)
+        public string ProcessAndSaveResults(List<DataSourceConfig> configs, string templatePath)
         {
             // 创建全新的Excel文件
-            string outputPath = GetOutputFilePath();
+            string outputPath = GetOutputFilePath(templatePath);
 
             using (var package = new ExcelPackage(new FileInfo(outputPath)))
             {
@@ -461,21 +282,24 @@ namespace JinReporter.Services
                 {
                     foreach (var config in configs)
                     {
+                        //ProcessSingleTemplate(package, config);
                         // 处理每个模板
-                        var templateSheet = templatePackage.Workbook.Worksheets[config.TemplateName];
+                        var templateSheet = templatePackage.Workbook.Worksheets["模板_" + config.TemplateName];
                         if (templateSheet != null)
                         {
                             // 创建结果Sheet（复制模板）
-                            string newSheetName = $"{DateTime.Today:yyyyMMdd}_{config.TemplateName}";
+                            string newSheetName = $"{config.TemplateName}";
                             var newSheet = package.Workbook.Worksheets.Add(newSheetName, templateSheet);
 
                             // 填充数据...
                             var countryData = ReadDataFile(config.CountryTablePath);
                             var productData = ReadDataFile(config.ProductTablePath);
-                            var templateData = ReadExcelSheet(package, templateSheet.Name);
+                            var templateData = ReadExcelSheet(newSheet);// 可以直接放newSheet进去
 
                             // 处理数据
                             new ReportProcessor().ProcessTables(countryData, productData, templateData);
+
+                            SetData(newSheet, templateData);
                         }
                     }
                 }
@@ -484,18 +308,49 @@ namespace JinReporter.Services
                 package.Save();
             }
 
-            // 打开结果文件
-            Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
+            return outputPath;
         }
 
-        private string GetOutputFilePath()
+        private void SetData(ExcelWorksheet targetSheet,DataTable data)
         {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "JinReporter_Results");
+            // 填充数据
+            for (int i = 2; i < data.Rows.Count - 1; i++)
+            {
+                for (int j = 0; j < data.Columns.Count; j++)
+                {
+                    var configCell = targetSheet.Cells[2, j + 1].Text;
+                    if (configCell == ReportProcessor.NeglectMarker) continue;
 
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+                    if (ShouldSkipCell(targetSheet.Cells[2, j + 1], targetSheet.Cells[i + 1, j + 1], data.Rows[i][j]))
+                        continue;
+
+                    //newSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j];
+
+                    if (decimal.TryParse(data.Rows[i][j].ToString(), out decimal numValue))
+                    {
+                        targetSheet.Cells[i + 1, j + 1].Value = numValue;
+                    }
+                    else
+                    {
+                        targetSheet.Cells[i + 1, j + 1].Value = data.Rows[i][j]; // 或处理异常
+                    }
+                }
+            }
+        }
+
+        private string GetOutputFilePath(string templatePath)
+        {
+            // 获取模板文件所在的目录
+            string templateDir = Path.GetDirectoryName(templatePath);
+
+            // 如果模板目录为空（比如templatePath是根目录），则使用桌面目录作为后备
+            if (string.IsNullOrEmpty(templateDir))
+            {
+                templateDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            }
+
+            // 生成带时间戳的输出文件名
+            return Path.Combine(templateDir, $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
         }
     }
 }

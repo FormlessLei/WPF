@@ -219,30 +219,16 @@ namespace JinReporter
                     }
                 }
 
-                // TODO 后续替换成创建新文件
-                //_fileService.ProcessAndSaveResults(_dataSources.ToList(), TemplateFileBox.Text);
+                var outputPath = _fileService.ProcessAndSaveResults(_dataSources.ToList(), TemplateFileBox.Text);
 
-                // 处理每个模板
-                using (var package = new ExcelPackage(new FileInfo(templatePath)))
-                {
-                    foreach (var config in _dataSources)
-                    {
-                        ProcessSingleTemplate(package, config);
-                    }
-                    package.Save();
-                }
 
-                MessageBoxResult result = MessageBox.Show("处理完成，是否打开模板文件?", "打开", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                MessageBoxResult result = MessageBox.Show("处理完成，是否打开结果?", "打开", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = TemplateFileBox.Text,
-                        UseShellExecute = true
-                    });
+                    // 打开结果文件
+                    Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
                 }
-
 
                 UpdateStatus("所有模板处理完成！");
             }
@@ -251,74 +237,6 @@ namespace JinReporter
                 HandleError(ex);
             }
         }
-
-        private void ProcessSingleTemplate(ExcelPackage package, DataSourceConfig config)
-        {
-            // 找到对应的模板Sheet
-            var templateSheet = package.Workbook.Worksheets["模板_" + config.TemplateName];
-            if (templateSheet == null)
-            {
-                throw new Exception($"找不到模板Sheet: {config.TemplateName}");
-            }
-
-            // 读取数据
-            var countryData = _fileService.ReadDataFile(config.CountryTablePath);
-            var productData = _fileService.ReadDataFile(config.ProductTablePath);
-            var templateData = _fileService.ReadExcelSheet(package, templateSheet.Name);
-
-            // 处理数据
-            _reportProcessor.ProcessTables(countryData, productData, templateData);
-
-            // 创建结果Sheet
-            string resultSheetName = $"{DateTime.Today:yyyy-MM-dd}_{config.TemplateName}";
-            _fileService.CreateResultSheet(package, templateSheet, templateData, resultSheetName);
-        }
-
-        //private void SetDefaultPaths()
-        //{
-        //    string dataSourcePath = @"C:\Users\Lei\Desktop\DataSource";
-        //    Table1Path.Text = Path.Combine(dataSourcePath, "表格1.csv");
-        //    Table2Path.Text = Path.Combine(dataSourcePath, "表格2.csv");
-        //    Table3Path.Text = Path.Combine(dataSourcePath, "表格3.xlsx");
-        //}
-
-        //private void ProcessButton_Click(object sender, RoutedEventArgs e)
-        //{
-        //    try
-        //    {
-        //        if (!ValidateInputFiles()) return;
-
-        //        var table1 = _fileService.ReadDataFile(Table1Path.Text);
-        //        var table2 = _fileService.ReadDataFile(Table2Path.Text);
-        //        var table3 = _fileService.ReadDataFile(Table3Path.Text);
-
-        //        _reportProcessor.ProcessTables(table1, table2, table3);
-        //        _fileService.SaveData(table3, Table3Path.Text);
-
-        //        MessageBox.Show("处理完成！");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        HandleError(ex);
-        //    }
-        //}
-
-        //private bool ValidateInputFiles()
-        //{
-        //    if (!File.Exists(Table1Path.Text))
-        //    {
-        //        ShowError("表格1文件不存在！");
-        //        return false;
-        //    }
-
-        //    if (!File.Exists(Table2Path.Text))
-        //    {
-        //        ShowError("表格2文件不存在！");
-        //        return false;
-        //    }
-
-        //    return true;
-        //}
 
         private void HandleError(Exception ex)
         {
@@ -356,16 +274,6 @@ namespace JinReporter
                 //    timer.Start();
                 //}
             });
-        }
-
-        private string GetOutputFilePath()
-        {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                "JinReporter_Results");
-
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
         }
     }
 }
