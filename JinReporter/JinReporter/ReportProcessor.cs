@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Globalization;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
 
 namespace JinReporter.Services
 {
@@ -30,7 +31,7 @@ namespace JinReporter.Services
         private Dictionary<int, string> GetColumnMappings(DataRow configRow)
         {
             var mapping = new Dictionary<int, string>();
-            for (int col = 2; col < configRow.Table.Columns.Count; col++)
+            for (int col = 1; col < configRow.Table.Columns.Count; col++)
             {
                 string configValue = configRow[col].ToString();
                 if (!string.IsNullOrEmpty(configValue))
@@ -117,26 +118,36 @@ namespace JinReporter.Services
             {
                 string productName = templateRow[1].ToString();
 
+                if (string.IsNullOrEmpty(productName)) return;
                 var names = productName.Split(Separator).Select(s => s.Trim());
-                var productRows = productData.AsEnumerable()
-                    .Where(row => names.Any(name =>
-                        row.Field<string>("商品名")?.Contains(name, StringComparison.OrdinalIgnoreCase) ?? false));
+
+                const int fixSearchColIndex = 1;
+                var serchCol = columnMapping[fixSearchColIndex];
+                EnumerableRowCollection<DataRow> productRows = null;
+                if (int.TryParse(serchCol, out int serchColIndex))
+                {
+                    productRows = productData.AsEnumerable().Where(row => names.Any(name => row.Field<string>(serchColIndex - 1)?.Contains(name, StringComparison.OrdinalIgnoreCase) ?? false));
+                }
+                else
+                {
+                    productRows = productData.AsEnumerable().Where(row => names.Any(name => row.Field<string>(serchCol)?.Contains(name, StringComparison.OrdinalIgnoreCase) ?? false));
+                }
 
                 foreach (var colPair in columnMapping)
                 {
                     int templateCol = colPair.Key;
+                    if (templateCol == fixSearchColIndex) continue;
+
                     string dataSourceCol = colPair.Value;
 
                     if (IsNegCol(templateCol)) continue;
 
                     decimal sum = 0;
-                    int count = 0;
                     foreach (DataRow productRow in productRows)
                     {
                         if (int.TryParse(dataSourceCol, out int colIndex))
                         {
                             sum += ConvertToDecimal(productRow[colIndex - 1]);
-                            count++;
                         }
                         else if (productRow.Table.Columns.Contains(dataSourceCol))
                         {

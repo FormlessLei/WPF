@@ -1,5 +1,6 @@
 ﻿using ExcelDataReader;
 using JinReporter.Services;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -121,7 +122,7 @@ namespace JinReporter
         {
             var templates = new List<TemplateInfo>();
 
-            using (var stream = File.OpenRead(filePath))
+            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             using (var reader = ExcelReaderFactory.CreateReader(stream))
             {
                 do

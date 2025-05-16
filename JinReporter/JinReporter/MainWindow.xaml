@@ -42,7 +42,7 @@
                 DragEnter="DropZone_DragEnter"
                 DragLeave="DropZone_DragLeave"
                 Drop="DropZone_Drop">
-            <TextBlock Text="用[Ctrl+鼠标左键]，按顺序选中多个文件，拖到此处批量分配" 
+            <TextBlock Text="用[Ctrl或Shift]+[鼠标左键]，选中多个文件，拖到此处批量分配" 
                       VerticalAlignment="Center" 
                       HorizontalAlignment="Left"
                       Margin="10,0,0,0"

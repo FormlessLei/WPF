@@ -173,7 +173,7 @@ namespace JinReporter.Services
             using (var package = new ExcelPackage(new FileInfo(outputPath)))
             {
                 // 读取模板文件（只读模式）
-                using (var templateStream = File.OpenRead(templatePath))
+                using (var templateStream = new FileStream(templatePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 using (var templatePackage = new ExcelPackage(templateStream))
                 {
                     foreach (var config in configs)
