@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:JinReporter"
         mc:Ignorable="d"
-        Title="多模板表格处理工具" Height="600" Width="650"
+        Title="日报助手" Height="600" Width="650"
         Icon="Rep.ico">
     <Grid>
         <Grid.RowDefinitions>
