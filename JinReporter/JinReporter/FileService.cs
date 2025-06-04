@@ -34,10 +34,21 @@ namespace JinReporter.Services
             var table = new DataTable();
             // 先自动检测分隔符
             //char delimiter = DetectDelimiter(filePath);
-            char delimiter = '\t';
+            //char delimiter = '\t';
+            //var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            //{
+            //    Delimiter = delimiter.ToString(), // 使用检测到的分隔符
+            //    HasHeaderRecord = false,
+            //    BadDataFound = _ => { },
+            //    MissingFieldFound = null,
+            //    Encoding = Encoding.UTF8,
+            //    TrimOptions = TrimOptions.Trim,
+            //    IgnoreBlankLines = true
+            //};
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
-                Delimiter = delimiter.ToString(), // 使用检测到的分隔符
+                DetectDelimiter = true, // 启用自动检测分隔符
+                DetectDelimiterValues = new[] { ",", ";", "|", "\t" }, // 可选，默认就是这些
                 HasHeaderRecord = false,
                 BadDataFound = _ => { },
                 MissingFieldFound = null,
@@ -267,10 +278,8 @@ namespace JinReporter.Services
             using (var reader = new StreamReader(filePath))
             {
                 string? line;
-                MainWindow.LogMsg(reader.BaseStream.Position.ToString());
                 while ((line = reader.ReadLine()) != null && reader.BaseStream.Position < 1024) // 只检查前1KB
                 {
-                    MainWindow.LogMsg(reader.BaseStream.Position.ToString());
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
                     foreach (var delim in delimiterScores.Keys.ToList())
