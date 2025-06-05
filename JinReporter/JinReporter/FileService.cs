@@ -33,22 +33,11 @@ namespace JinReporter.Services
         {
             var table = new DataTable();
             // 先自动检测分隔符
-            //char delimiter = DetectDelimiter(filePath);
+            char delimiter = DetectDelimiter(filePath);
             //char delimiter = '\t';
-            //var config = new CsvConfiguration(CultureInfo.InvariantCulture)
-            //{
-            //    Delimiter = delimiter.ToString(), // 使用检测到的分隔符
-            //    HasHeaderRecord = false,
-            //    BadDataFound = _ => { },
-            //    MissingFieldFound = null,
-            //    Encoding = Encoding.UTF8,
-            //    TrimOptions = TrimOptions.Trim,
-            //    IgnoreBlankLines = true
-            //};
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
-                DetectDelimiter = true, // 启用自动检测分隔符
-                DetectDelimiterValues = new[] { ",", ";", "|", "\t" }, // 可选，默认就是这些
+                Delimiter = delimiter.ToString(), // 使用检测到的分隔符
                 HasHeaderRecord = false,
                 BadDataFound = _ => { },
                 MissingFieldFound = null,
@@ -56,7 +45,18 @@ namespace JinReporter.Services
                 TrimOptions = TrimOptions.Trim,
                 IgnoreBlankLines = true
             };
-
+            //var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            //{
+            //    DetectDelimiter = true, // 启用自动检测分隔符
+            //    DetectDelimiterValues = new[] { "\t", /*",",*/ ";", "|" }, // 可选，默认就是这些
+            //    HasHeaderRecord = false,
+            //    BadDataFound = _ => { },
+            //    MissingFieldFound = null,
+            //    Encoding = Encoding.UTF8,
+            //    TrimOptions = TrimOptions.Trim,
+            //    IgnoreBlankLines = true
+            //};
+            MainWindow.LogMsg("分隔符: " + config.Delimiter);
             int headerRowIndex = 2; // 表头在第3行（0-based索引为2）
             bool hasProcessedHeader = false;
             int currentRow = 0;
@@ -218,7 +218,7 @@ namespace JinReporter.Services
             return outputPath;
         }
 
-        private void SetData(ExcelWorksheet targetSheet,DataTable data)
+        private void SetData(ExcelWorksheet targetSheet, DataTable data)
         {
             // 填充数据
             for (int i = 2; i < data.Rows.Count - 1; i++)
@@ -278,7 +278,7 @@ namespace JinReporter.Services
             using (var reader = new StreamReader(filePath))
             {
                 string? line;
-                while ((line = reader.ReadLine()) != null && reader.BaseStream.Position < 1024) // 只检查前1KB
+                while ((line = reader.ReadLine()) != null && reader.BaseStream.Position <= 1024) // 只检查前1KB
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
@@ -298,8 +298,7 @@ namespace JinReporter.Services
                 }
             }
 
-            return delimiterScores.OrderByDescending(kv => kv.Value)
-                                 .First().Key;
+            return delimiterScores.OrderByDescending(kv => kv.Value).First().Key;
         }
 
         private object ConvertToDataType(string value, Type targetType)
