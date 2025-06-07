@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!--If you are willing to use Windows/MacOS native APIs you will need to create 3 projects.
+    One for Windows with net8.0-windows TFM, one for MacOS with net8.0-macos and one with net8.0 TFM for Linux.-->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>日报助手</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Label="Avalonia">
+    <ApplicationIcon>Rep.ico</ApplicationIcon>
+    <UseAppHost>true</UseAppHost>
+     <!-- 确保这是 Avalonia 项目 -->
+    <UseAvalonia>true</UseAvalonia>
+    <!-- 添加 macOS 运行时支持 -->
+    <RuntimeIdentifiers>osx-x64;osx-arm64</RuntimeIdentifiers>
+    <!-- 启用 .app 包生成 -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Rep.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JinReporter_Avalonia\JinReporter_Avalonia.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+
+    <!-- 添加 macOS 打包目标 -->
+  <Target Name="BundleApp" AfterTargets="Publish">
+    <Exec Command="dotnet publish -c Release -r osx-x64 --self-contained true /p:CreateAppBundle=true" />
+  </Target>
+  
+</Project>

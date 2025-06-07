@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        x:Class="JinReporter_Avalonia.Views.MessageBoxWindow"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="300" Height="150"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Icon="/Assets/Rep.ico"
+        Title="{Binding TitleText}"
+        >
+
+  <Grid Margin="10">
+    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" MaxHeight="100" Margin="0,20,0,0"
+               VerticalAlignment="Top" HorizontalAlignment="Center" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Spacing="10"
+                Grid.Row="1">
+      <Button Content="是" Width="80" x:Name="YesButton" HorizontalContentAlignment="Center"/>
+      <Button Content="否" Width="80" x:Name="NoButton"  HorizontalContentAlignment="Center"/>
+    </StackPanel>
+  </Grid>
+</Window>
